@@ -82,7 +82,8 @@ export interface IDynamicFieldProps {
   // Related to various field types
   options?: IDropdownOption[];
   isRichText?: boolean;
-  dateFormat?: DateFormat;
+  //dateFormat?: DateFormat;
+  displayFormat?: number;
   firstDayOfWeek: number;
   principalType?: string;
   description?: string;

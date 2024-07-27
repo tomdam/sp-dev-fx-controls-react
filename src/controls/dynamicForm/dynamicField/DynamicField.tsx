@@ -73,7 +73,8 @@ export class DynamicField extends React.Component<IDynamicFieldProps, IDynamicFi
       required,
       isRichText,
       //bingAPIKey,
-      dateFormat,
+      //dateFormat,
+      displayFormat,
       firstDayOfWeek,
       columnInternalName,
       principalType,
@@ -103,7 +104,7 @@ export class DynamicField extends React.Component<IDynamicFieldProps, IDynamicFi
     // const defaultValue = fieldDefaultValue;
 
     const labelEl = <label className={(required) ? styles.fieldRequired + ' ' + styles.fieldLabel : styles.fieldLabel}>{label}</label>;
-    const errorText = this.props.validationErrorMessage || this.getRequiredErrorText();
+    const errorText = this.props.validationErrorMessage || this.getRequiredErrorText(this.props.value);
     const errorTextEl = <text className={styles.errormessage}>{errorText}</text>;
     const descriptionEl = <text className={styles.fieldDescription}>{description}</text>;
     const hasImage = !!changedValue;
@@ -328,7 +329,7 @@ export class DynamicField extends React.Component<IDynamicFieldProps, IDynamicFi
             {labelEl}
           </div>
           {
-            dateFormat === 'DateOnly' &&
+            displayFormat === 0  &&
             <DatePicker
               placeholder={placeholder}
               className={styles.pickersContainer}
@@ -339,7 +340,7 @@ export class DynamicField extends React.Component<IDynamicFieldProps, IDynamicFi
               firstDayOfWeek={firstDayOfWeek}
             />}
           {
-            dateFormat === 'DateTime' &&
+            displayFormat === 1  &&
             <DateTimePicker
               key={columnInternalName}
               placeholder={placeholder}
@@ -612,17 +613,21 @@ export class DynamicField extends React.Component<IDynamicFieldProps, IDynamicFi
   }
 
   private onBlur = (): void => {
-    if (this.state.changedValue === null && this.props.defaultValue === "") {
+    /*if (this.state.changedValue === null && this.props.defaultValue === "") {
       this.setState({ changedValue: "" });
     }
-    this.props.onChanged(this.props.columnInternalName, this.state.changedValue, true);
+    this.props.onChanged(this.props.columnInternalName, this.state.changedValue, true);*/
   }
 
-  private getRequiredErrorText = (): string => {
+  private getRequiredErrorText = (fieldValue: any): string => {
     const {
       changedValue
     } = this.state;
-    return (changedValue === undefined || changedValue === '' || changedValue === null || this.isEmptyArray(changedValue)) && this.props.required ? strings.DynamicFormRequiredErrorMessage : null;
+    return (
+            (fieldValue === undefined || fieldValue === '' || fieldValue === null || this.isEmptyArray(fieldValue)) &&
+            (changedValue === undefined || changedValue === '' || changedValue === null || this.isEmptyArray(changedValue))
+          ) 
+            && this.props.required ? strings.DynamicFormRequiredErrorMessage : null;
   }
 
   private getNumberErrorText = (): string => {

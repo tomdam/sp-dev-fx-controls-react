@@ -19,7 +19,6 @@ import { ProgressIndicator } from "@fluentui/react/lib/ProgressIndicator";
 import { IStackTokens, Stack } from "@fluentui/react/lib/Stack";
 import { DynamicField } from "./dynamicField";
 import {
-  DateFormat,
   FieldChangeAdditionalData,
   IDynamicFieldProps,
 } from "./dynamicField/IDynamicFieldProps";
@@ -915,6 +914,7 @@ export class DynamicForm extends React.Component<
       respectETag,
       customIcons,
       onListItemLoaded,
+      objectWithCustomInitialValues
     } = this.props;
     let contentTypeId = this.props.contentTypeId;
 
@@ -970,7 +970,7 @@ export class DynamicForm extends React.Component<
 
       // Load SharePoint list item
       const spList = sp.web.lists.getById(listId);
-      let item = null;
+      let item = (objectWithCustomInitialValues) ? objectWithCustomInitialValues : null;
       let etag: string | undefined = undefined;
       if (listItemId !== undefined && listItemId !== null && listItemId !== 0) {
         item = await spList.items.getById(listItemId).get().catch(err => this.updateFormMessages(MessageBarType.error, err.message));
@@ -993,7 +993,7 @@ export class DynamicForm extends React.Component<
         listId,
         listItemId,
         disabledFields,
-        customIcons
+        customIcons        
       );
 
       // Get installed languages for Currency fields
@@ -1035,7 +1035,7 @@ export class DynamicForm extends React.Component<
    * @returns
    */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  private async buildFieldCollection(listInfo: IRenderListDataAsStreamClientFormResult, contentTypeName: string, item: any, numberFields: ISPField[], listId: string, listItemId: number, disabledFields: string[], customIcons: {[key: string]: string}): Promise<IDynamicFieldProps[]> {
+  private async buildFieldCollection(listInfo: IRenderListDataAsStreamClientFormResult, contentTypeName: string, item: any, numberFields: ISPField[], listId: string, listItemId: number, disabledFields: string[], customIcons: {[key: string]: string} ): Promise<IDynamicFieldProps[]> {
     const tempFields: IDynamicFieldProps[] = [];
     let order: number = 0;
     const hiddenFields = this.props.hiddenFields !== undefined ? this.props.hiddenFields : [];
@@ -1055,10 +1055,12 @@ export class DynamicForm extends React.Component<
         const choices: IDropdownOption[] = [];
         let defaultValue = null;
         let value = undefined;
+        let newValue = undefined;
         let stringValue = null;
         const subPropertyValues: Record<string, unknown> = {};
         let richText = false;
-        let dateFormat: DateFormat | undefined;
+        //let dateFormat: DateFormat | undefined;
+        let displayFormat: number | undefined;
         let principalType = "";
         let cultureName: string;
         let minValue: number | undefined;
@@ -1110,9 +1112,17 @@ export class DynamicForm extends React.Component<
 
         // Setup Lookup fields
         if (field.FieldType === "Lookup" || field.FieldType === "LookupMulti") {
+          value = [];
           lookupListId = field.LookupListId;
           lookupField = field.LookupFieldName;
-          if (item !== null) {
+          
+          if (item !== null)
+          { 
+            if (item[field.InternalName + "Id"]) {
+              subPropertyValues.id = item[field.InternalName + "Id"];
+              subPropertyValues.lookupId = subPropertyValues.id;
+            }
+          if (listItemId > 0) {
             value = await this._spService.getLookupValues(
               listId,
               listItemId,
@@ -1120,20 +1130,25 @@ export class DynamicForm extends React.Component<
               lookupField,
               this.webURL
             );
-            stringValue = value?.map(dv => dv.key + ';#' + dv.name).join(';#');
-            if (item[field.InternalName + "Id"]) {
-              subPropertyValues.id = item[field.InternalName + "Id"];
-              subPropertyValues.lookupId = subPropertyValues.id;
+          } 
+          else
+          {
+            if (item[field.InternalName])
+            {
+              //item[field.InternalName] should be in this case array [{key:"ID", name:"Title"}]
+              value = item[field.InternalName];
+              newValue = value;
             }
-            subPropertyValues.lookupValue = value?.map(dv => dv.name);
-          } else {
-            value = [];
+
           }
+          stringValue = value?.map(dv => dv.key + ';#' + dv.name).join(';#');            
+          subPropertyValues.lookupValue = value?.map(dv => dv.name);
+        }
         }
 
         // Setup User fields
         if (field.FieldType === "User") {
-          if (item !== null) {
+          if (item !== null && listItemId > 0) {
             const userEmails: string[] = [];
             userEmails.push(
               (await this._spService.getUserUPNFromFieldValue(
@@ -1156,7 +1171,7 @@ export class DynamicForm extends React.Component<
           principalType = field.PrincipalAccountType;
         }
         if (field.FieldType === "UserMulti") {
-          if (item !== null) {
+          if (item !== null && listItemId > 0) {
             value = await this._spService.getUsersUPNFromFieldValue(
               listId,
               listItemId,
@@ -1174,7 +1189,7 @@ export class DynamicForm extends React.Component<
         if (field.FieldType === "TaxonomyFieldType") {
           termSetId = field.TermSetId;
           anchorId = field.AnchorId;
-          if (item !== null) {
+          if (item !== null && listItemId > 0) {
             const response = await this._spService.getSingleManagedMetadataLabel(
               listId,
               listItemId,
@@ -1243,7 +1258,8 @@ export class DynamicForm extends React.Component<
             defaultValue = new Date(defaultValue);
           }
 
-          dateFormat = field.DateFormat || "DateOnly";
+          //dateFormat = field.DateFormat || "DateOnly";
+          displayFormat = field.DisplayFormat || 0;
           defaultDayOfWeek = (await this._spService.getRegionalWebSettings(this.webURL)).FirstDayOfWeek;
         }
 
@@ -1267,7 +1283,7 @@ export class DynamicForm extends React.Component<
 
         tempFields.push({
           value,
-          newValue: undefined,
+          newValue: newValue,
           stringValue,
           subPropertyValues,
           cultureName,
@@ -1292,7 +1308,7 @@ export class DynamicForm extends React.Component<
           hiddenFieldName: hiddenName,
           Order: order,
           isRichText: richText,
-          dateFormat: dateFormat,
+          displayFormat: displayFormat,
           firstDayOfWeek: defaultDayOfWeek,
           listItemId: listItemId,
           principalType: principalType,

@@ -17,6 +17,13 @@ export interface IDynamicFormProps {
    * List id
    */
   listId: string;
+
+  /*
+   * If the new item should have some predefined default values which differ to the default values of the form, this object can be used.
+   * The properties of the object must match the internal name of the respective fields and the values must be of the allowed type per field.
+  */
+  objectWithCustomInitialValues?: any;// eslint-disable-line @typescript-eslint/no-explicit-any
+
   /**
    * List item loaded handler.
    * Allows to access list item information after it's loaded.
