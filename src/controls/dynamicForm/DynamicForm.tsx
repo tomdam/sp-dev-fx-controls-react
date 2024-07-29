@@ -402,6 +402,8 @@ export class DynamicForm extends React.Component<
       /** Item values for save / update */
       const objects = {};
 
+      const fullObject  = {};
+
       for (let i = 0, len = fields.length; i < len; i++) {
         const field = fields[i];
         const {
@@ -419,7 +421,7 @@ export class DynamicForm extends React.Component<
           let value = field.newValue;
           
           if (["Lookup", "LookupMulti", "User", "UserMulti", "TaxonomyFieldTypeMulti"].indexOf(fieldType) < 0) {
-            objects[columnInternalName] = value;
+            objects[columnInternalName] = value;            
           }
 
           // Choice fields
@@ -496,10 +498,99 @@ export class DynamicForm extends React.Component<
             }
           }
         }
+        //prepare fullobject
+        let realValue = (field.newValue) ? field.newValue : field.value;
+        if (realValue !== null && realValue !== undefined) {
+
+          if (realValue === undefined || realValue === null) realValue = "";
+          
+          if (["Lookup", "LookupMulti", "User", "UserMulti", "TaxonomyFieldTypeMulti"].indexOf(fieldType) < 0) {
+            fullObject[fieldcolumnInternalName] = realValue;
+          }
+
+          // Choice fields
+
+          if (fieldType === "Choice") {
+            fullObject[fieldcolumnInternalName] = realValue.key;
+          }
+          if (fieldType === "MultiChoice") {
+            fullObject[fieldcolumnInternalName] = { results: realValue };
+          }
+
+          // Lookup fields
+
+          if (fieldType === "Lookup") {
+           if (realValue && realValue.length > 0) {
+              fullObject[`${fieldcolumnInternalName}Id`] = realValue[0].key;
+            } else {
+              fullObject[`${fieldcolumnInternalName}Id`] = null;
+            }
+          }
+          if (fieldType === "LookupMulti") {
+            let val = [];
+            realValue.forEach((element) => {
+              val.push(element.key);
+            });
+            fullObject[`${fieldcolumnInternalName}Id`] = {
+              results: val.length === 0 ? null : val,
+            };
+          }
+
+          // User fields
+
+          if (fieldType === "User") {
+            //fullObject[`${fieldcolumnInternalName}Id`] = realValue.length === 0 ? null : realValue;
+            fullObject[`${fieldcolumnInternalName}Id`] = realValue.length === 0 ? null : field.subPropertyValues.id;
+          }
+          if (fieldType === "UserMulti") {
+            let val = [];
+            field.subPropertyValues.forEach((element) => {
+              val.push(element.id);
+            });
+            fullObject[`${fieldcolumnInternalName}Id`] = {
+              results: realValue.length === 0 ? null : val,
+            };
+          }
+
+          // Taxonomy / Managed Metadata fields
+
+          if (fieldType === "TaxonomyFieldType") {
+            fullObject[fieldcolumnInternalName] = {
+              __metadata: { type: "SP.Taxonomy.TaxonomyFieldValue" },
+              Label: realValue[0]?.name ?? "",
+              TermGuid: realValue[0]?.key ?? "11111111-1111-1111-1111-111111111111",
+              WssId: "-1",
+            };
+          }
+          if (fieldType === "TaxonomyFieldTypeMulti") {
+            fullObject[hiddenFieldName] = realValue
+              .map((term) => `-1#;${term.name}|${term.key};`)
+              .join("#"); 
+          }
+
+          // Other fields
+
+          if (fieldType === "Location") {
+            fullObject[fieldcolumnInternalName] = JSON.stringify(realValue);
+          }
+          if (fieldType === "Thumbnail") {
+            if (additionalData) {
+              const uploadedImage = await this.uploadImage(additionalData);
+              fullObject[fieldcolumnInternalName] = JSON.stringify({
+                type: "thumbnail",
+                fileName: uploadedImage.Name,
+                serverRelativeUrl: uploadedImage.ServerRelativeUrl,
+                id: uploadedImage.UniqueId,
+              });
+            } else {              
+              fullObject[fieldcolumnInternalName] = null;
+            }
+          }
+        }
       }
 
       if (onBeforeSubmit) {
-        const isCancelled = await onBeforeSubmit(objects);
+        const isCancelled = await onBeforeSubmit(objects, fullObject);
 
         if (isCancelled) {
           this.setState({
