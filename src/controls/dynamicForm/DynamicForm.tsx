@@ -403,6 +403,7 @@ export class DynamicForm extends React.Component<
       const objects = {};
 
       const fullObject  = {};
+      fullObject["Id"] = listItemId;
 
       for (let i = 0, len = fields.length; i < len; i++) {
         const field = fields[i];
