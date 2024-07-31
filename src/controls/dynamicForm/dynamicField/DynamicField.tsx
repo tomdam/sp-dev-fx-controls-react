@@ -23,6 +23,7 @@ import styles from '../DynamicForm.module.scss';
 import { IDynamicFieldProps } from './IDynamicFieldProps';
 import { IDynamicFieldState } from './IDynamicFieldState';
 import CurrencyMap from "../CurrencyMap";
+import { TimeConvention } from '../../dateTimePicker';
 
 export class DynamicField extends React.Component<IDynamicFieldProps, IDynamicFieldState> {
 
@@ -349,6 +350,7 @@ export class DynamicField extends React.Component<IDynamicFieldProps, IDynamicFi
               onChange={(newDate) => { this.onChange(newDate, true); }}
               disabled={disabled}
               firstDayOfWeek={firstDayOfWeek}
+              timeConvention={TimeConvention.Hours24}
             />
           }
           {descriptionEl}
